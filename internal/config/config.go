@@ -16,7 +16,7 @@ type Config struct {
 // LoadConfig 加载配置
 func LoadConfig() *Config {
 	return &Config{
-		Port:             getEnv("PORT", "8080"),
+		Port:             getEnv("PORT", "8081"),
 		AuthToken:        getEnv("AUTH_TOKEN", ""),
 		DBURL:            getEnv("DB_URL", "postgres://postgres:postgres@localhost:5432/movies?sslmode=disable"),
 		BoxOfficeURL:     getEnv("BOXOFFICE_URL", ""),

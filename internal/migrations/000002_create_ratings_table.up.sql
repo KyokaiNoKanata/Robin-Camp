@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS ratings (
     movie_title VARCHAR(255) NOT NULL,
     rater_id VARCHAR(255) NOT NULL,
-    rating NUMERIC(2,1) NOT NULL CHECK (rating IN (0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0)),
+    rating FLOAT NOT NULL CHECK (rating IN (0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0)),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (movie_title, rater_id),

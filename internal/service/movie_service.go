@@ -17,14 +17,14 @@ type MovieService interface {
 
 // movieService 电影服务实现
 type movieService struct {
-	movieRepo       repository.MovieRepository
+	movieRepo        repository.MovieRepository
 	boxOfficeService BoxOfficeService
 }
 
 // NewMovieService 创建电影服务实例
 func NewMovieService(movieRepo repository.MovieRepository, boxOfficeService BoxOfficeService) MovieService {
 	return &movieService{
-		movieRepo:       movieRepo,
+		movieRepo:        movieRepo,
 		boxOfficeService: boxOfficeService,
 	}
 }
@@ -55,32 +55,8 @@ func (s *movieService) CreateMovie(movieCreate *models.MovieCreate) (*models.Mov
 	if s.boxOfficeService != nil && movieCreate.Title != "" {
 		boxOfficeData, err := s.boxOfficeService.GetBoxOfficeData(movieCreate.Title)
 		if err == nil && boxOfficeData != nil {
-			// 合并票房数据，但用户提供的值优先
-			if movie.Distributor == nil && boxOfficeData.Distributor != "" {
-				distributor := boxOfficeData.Distributor
-				movie.Distributor = &distributor
-			}
-
-			if movie.Budget == nil && boxOfficeData.Budget != 0 {
-				budget := boxOfficeData.Budget
-				movie.Budget = &budget
-			}
-
-			if movie.MPARating == nil && boxOfficeData.MPARating != "" {
-				mpaRating := boxOfficeData.MPARating
-				movie.MPARating = &mpaRating
-			}
-
 			// 设置票房信息
-			movie.BoxOffice = &models.BoxOffice{
-				Revenue: models.Revenue{
-					Worldwide:        boxOfficeData.Revenue.Worldwide,
-					OpeningWeekendUSA: boxOfficeData.Revenue.OpeningWeekendUSA,
-				},
-				Currency:    "USD",
-				Source:      "BoxOfficeAPI",
-				LastUpdated: time.Now(),
-			}
+			movie.BoxOffice = boxOfficeData
 		}
 	}
 

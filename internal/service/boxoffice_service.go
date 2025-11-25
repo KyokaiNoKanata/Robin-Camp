@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"movie-rating-api/internal/models"
+	"net/http"
 	"net/url"
 	"time"
 )
@@ -17,8 +17,8 @@ type BoxOfficeService interface {
 
 // boxOfficeService 票房服务实现
 type boxOfficeService struct {
-	apiURL   string
-	apiKey   string
+	apiURL     string
+	apiKey     string
 	httpClient *http.Client
 }
 
@@ -77,7 +77,7 @@ func (s *boxOfficeService) GetBoxOfficeData(movieTitle string) (*models.BoxOffic
 		Budget      int64  `json:"budget"`
 		MPARating   string `json:"mpa_rating"`
 		Revenue     struct {
-			Worldwide        int64 `json:"worldwide"`
+			Worldwide         int64 `json:"worldwide"`
 			OpeningWeekendUSA int64 `json:"opening_weekend_usa"`
 		} `json:"revenue"`
 	}
@@ -87,14 +87,12 @@ func (s *boxOfficeService) GetBoxOfficeData(movieTitle string) (*models.BoxOffic
 	}
 
 	// 构建BoxOffice数据
+	openingWeekend := boxOfficeResponse.Revenue.OpeningWeekendUSA
 	return &models.BoxOffice{
 		Revenue: models.Revenue{
-			Worldwide:        boxOfficeResponse.Revenue.Worldwide,
-			OpeningWeekendUSA: boxOfficeResponse.Revenue.OpeningWeekendUSA,
+			Worldwide:         boxOfficeResponse.Revenue.Worldwide,
+			OpeningWeekendUSA: &openingWeekend,
 		},
-		Distributor: boxOfficeResponse.Distributor,
-		Budget:      boxOfficeResponse.Budget,
-		MPARating:   boxOfficeResponse.MPARating,
 		Currency:    "USD",
 		Source:      "BoxOfficeAPI",
 		LastUpdated: time.Now(),

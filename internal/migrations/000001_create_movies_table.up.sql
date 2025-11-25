@@ -14,6 +14,6 @@ CREATE TABLE IF NOT EXISTS movies (
 
 -- 创建索引以提高查询性能
 CREATE INDEX IF NOT EXISTS idx_movies_title ON movies(title);
-CREATE INDEX IF NOT EXISTS idx_movies_year ON EXTRACT(YEAR FROM release_date);
+CREATE INDEX IF NOT EXISTS idx_movies_year ON movies((EXTRACT(YEAR FROM release_date)));
 CREATE INDEX IF NOT EXISTS idx_movies_genre ON movies(genre);
 CREATE INDEX IF NOT EXISTS idx_movies_distributor ON movies(distributor);

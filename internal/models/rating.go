@@ -9,7 +9,8 @@ type Rating struct {
 
 // RatingSubmit 提交评分请求
 type RatingSubmit struct {
-	Rating float64 `json:"rating" binding:"required,oneof=0.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0 4.5 5.0"`
+	Score   float64 `json:"score" binding:"required,min=0,max=5"`
+	Comment string  `json:"comment"`
 }
 
 // RatingResult 评分结果响应

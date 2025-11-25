@@ -23,18 +23,28 @@ func main() {
 
 	// 加载配置
 	cfg := config.LoadConfig()
+	log.Printf("Loaded AUTH_TOKEN: %s", cfg.AuthToken)
+
+	// 强制使用本地PostgreSQL连接字符串
+	localDBURL := "postgres://postgres:postgres@localhost:5432/movies?sslmode=disable"
+	log.Printf("Using database URL: %s", localDBURL)
 
 	// 初始化数据库
-	db, err := repository.InitDB(cfg.DBURL)
+	db, err := repository.InitDB(localDBURL)
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 	defer db.Close()
 
+	// 确定迁移目录
+	migrationDir := "internal/migrations"
+
 	// 运行数据库迁移
-	if err := repository.RunMigrations(cfg.DBURL); err != nil {
+	if err := repository.RunMigrations(localDBURL, migrationDir); err != nil {
 		log.Fatalf("Failed to run migrations: %v", err)
 	}
+
+	log.Println("Database initialized successfully")
 
 	// 初始化存储库
 	movieRepo := repository.NewMovieRepository(db)
@@ -86,8 +96,8 @@ func main() {
 		protected.GET("/movies/:title/ratings", movieHandler.GetMovieRatings)
 	}
 
-	// 启动服务器
-	serverAddr := ":" + cfg.Port
+	// 启动服务器 (使用端口9090)
+	serverAddr := ":9090"
 	log.Printf("Server starting on %s", serverAddr)
 
 	// 使用自定义HTTP服务器配置

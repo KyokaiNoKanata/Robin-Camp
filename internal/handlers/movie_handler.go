@@ -1,13 +1,16 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
-	"github.com/gin-gonic/gin"
 	"movie-rating-api/internal/models"
 	"movie-rating-api/internal/service"
+
+	"github.com/gin-gonic/gin"
 )
 
 // MovieHandler 电影处理器
@@ -24,8 +27,9 @@ func NewMovieHandler(movieService service.MovieService, ratingService service.Ra
 	}
 }
 
-// CreateMovie 创建电影
+// CreateMovie 创建新电影
 func (h *MovieHandler) CreateMovie(c *gin.Context) {
+
 	var movieCreate models.MovieCreate
 
 	// 绑定请求体
@@ -35,8 +39,14 @@ func (h *MovieHandler) CreateMovie(c *gin.Context) {
 	}
 
 	// 验证必填字段
-	if movieCreate.Title == "" || movieCreate.ReleaseDate.IsZero() || len(movieCreate.Genre) == 0 {
+	if movieCreate.Title == "" || movieCreate.ReleaseDate == "" || movieCreate.Genre == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Title, release date and genre are required"})
+		return
+	}
+	
+	// 验证ReleaseDate格式是否正确（YYYY-MM-DD）
+	if _, err := time.Parse("2006-01-02", movieCreate.ReleaseDate); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Release date must be in YYYY-MM-DD format"})
 		return
 	}
 
@@ -47,7 +57,9 @@ func (h *MovieHandler) CreateMovie(c *gin.Context) {
 			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create movie"})
+		// 记录详细错误信息
+		fmt.Printf("Error creating movie: %v\n", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to create movie: %v", err)})
 		return
 	}
 
@@ -56,8 +68,9 @@ func (h *MovieHandler) CreateMovie(c *gin.Context) {
 	c.JSON(http.StatusCreated, movie)
 }
 
-// ListMovies 列出电影
+// ListMovies 获取电影列表
 func (h *MovieHandler) ListMovies(c *gin.Context) {
+
 	// 构建查询参数
 	query := make(map[string]interface{})
 
@@ -96,12 +109,26 @@ func (h *MovieHandler) ListMovies(c *gin.Context) {
 	c.JSON(http.StatusOK, page)
 }
 
-// SubmitRating 提交评分
+// SubmitRating 提交电影评分
 func (h *MovieHandler) SubmitRating(c *gin.Context) {
-	// 获取路径参数
+
+	// 获取路径参数并进行URL解码
 	movieTitle := c.Param("title")
 	if movieTitle == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Movie title is required"})
+		return
+	}
+	// 解码URL中的'+'为空格
+	movieTitle = strings.ReplaceAll(movieTitle, "+", " ")
+
+	// 获取评分者ID（从查询参数或上下文）
+	raterID := c.Query("raterId")
+	if raterID == "" {
+		// 尝试从请求头获取
+		raterID = c.GetHeader("X-Rater-ID")
+	}
+	if raterID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Rater ID is required"})
 		return
 	}
 
@@ -109,22 +136,21 @@ func (h *MovieHandler) SubmitRating(c *gin.Context) {
 
 	// 绑定请求体
 	if err := c.ShouldBindJSON(&ratingSubmit); err != nil {
+		fmt.Printf("Invalid request body: %v\n", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 		return
 	}
 
-	// 设置电影标题
-	ratingSubmit.MovieTitle = movieTitle
-
-	// 验证必填字段
-	if ratingSubmit.RaterID == "" || ratingSubmit.Rating < 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Rater ID and valid rating are required"})
+	// 验证评分
+	if ratingSubmit.Score < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Valid rating is required"})
 		return
 	}
 
 	// 提交评分
-	result, err := h.ratingService.SubmitRating(&ratingSubmit)
+	result, err := h.ratingService.SubmitRating(movieTitle, raterID, &ratingSubmit)
 	if err != nil {
+		fmt.Printf("Error submitting rating: %v\n", err)
 		if strings.Contains(err.Error(), "not found") {
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
@@ -137,23 +163,21 @@ func (h *MovieHandler) SubmitRating(c *gin.Context) {
 		return
 	}
 
-	// 根据是否是更新操作返回不同的状态码
-	statusCode := http.StatusCreated
-	if result.Updated {
-		statusCode = http.StatusOK
-	}
-
-	c.JSON(statusCode, result)
+	// 返回评分结果
+	c.JSON(http.StatusCreated, result)
 }
 
 // GetMovieRatings 获取电影评分
 func (h *MovieHandler) GetMovieRatings(c *gin.Context) {
-	// 获取路径参数
+
+	// 获取路径参数并进行URL解码
 	movieTitle := c.Param("title")
 	if movieTitle == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Movie title is required"})
 		return
 	}
+	// 解码URL中的'+'为空格
+	movieTitle = strings.ReplaceAll(movieTitle, "+", " ")
 
 	// 获取评分
 	aggregate, err := h.ratingService.GetMovieRatings(movieTitle)

@@ -22,15 +22,17 @@ func NewRatingRepository(db *sql.DB) RatingRepository {
 	return &ratingRepository{db: db}
 }
 
-// Upsert 更新或插入评分（Upsert操作）
+// Upsert 插入或更新评分
 func (r *ratingRepository) Upsert(rating *models.Rating) error {
+	// 由于我们已将数据库字段改为FLOAT类型，可以直接使用float64值
 	query := `
 		INSERT INTO ratings (movie_title, rater_id, rating, updated_at)
 		VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
 		ON CONFLICT (movie_title, rater_id)
-		DO UPDATE SET rating = $3, updated_at = CURRENT_TIMESTAMP
+		DO UPDATE SET rating = EXCLUDED.rating, updated_at = CURRENT_TIMESTAMP
 	`
 
+	// 直接执行，无需特殊处理
 	_, err := r.db.Exec(query, rating.MovieTitle, rating.RaterID, rating.Rating)
 	return err
 }
@@ -48,36 +50,38 @@ func (r *ratingRepository) GetByMovieAndRater(movieTitle, raterID string) (*mode
 		&rating.MovieTitle, &rating.RaterID, &rating.Rating,
 	)
 
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
 		return nil, err
 	}
 
 	return &rating, nil
 }
 
-// GetAggregateByMovie 获取电影的评分聚合信息（平均值和数量）
+// GetAggregateByMovie 获取电影的聚合评分
 func (r *ratingRepository) GetAggregateByMovie(movieTitle string) (*models.RatingAggregate, error) {
+	// 确保查询语句与FLOAT类型兼容
 	query := `
-		SELECT ROUND(AVG(rating)::numeric, 1)::float, COUNT(*)
+		SELECT COALESCE(AVG(rating), 0) as average, COUNT(*) as count
 		FROM ratings
 		WHERE movie_title = $1
 	`
 
 	var aggregate models.RatingAggregate
-	err := r.db.QueryRow(query, movieTitle).Scan(
-		&aggregate.Average, &aggregate.Count,
-	)
+	var avg float64
+	var count int
 
-	if err == sql.ErrNoRows {
-		// 如果没有评分，返回平均值为0，数量为0
-		return &models.RatingAggregate{Average: 0, Count: 0}, nil
-	}
+	// 使用独立变量来扫描结果，确保类型兼容性
+	err := r.db.QueryRow(query, movieTitle).Scan(&avg, &count)
 	if err != nil {
 		return nil, err
 	}
+
+	// 手动赋值给结构体
+	aggregate.Average = avg
+	aggregate.Count = count
 
 	return &aggregate, nil
 }

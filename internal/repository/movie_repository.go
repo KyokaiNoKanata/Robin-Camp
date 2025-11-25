@@ -34,17 +34,8 @@ func (r *movieRepository) Create(movie *models.Movie) error {
 		RETURNING id
 	`
 
-	var boxOfficeJSON []byte
-	if movie.BoxOffice != nil {
-		jsonData, err := json.Marshal(movie.BoxOffice)
-		if err != nil {
-			return err
-		}
-		boxOfficeJSON = jsonData
-	}
-
 	err := r.db.QueryRow(query, movie.ID, movie.Title, movie.ReleaseDate, movie.Genre,
-		movie.Distributor, movie.Budget, movie.MPARating, boxOfficeJSON).Scan(&movie.ID)
+		movie.Distributor, movie.Budget, movie.MPARating, movie.BoxOffice).Scan(&movie.ID)
 
 	return err
 }
@@ -197,15 +188,6 @@ func (r *movieRepository) Update(movie *models.Movie) error {
 		WHERE title = $5
 	`
 
-	var boxOfficeJSON []byte
-	if movie.BoxOffice != nil {
-		jsonData, err := json.Marshal(movie.BoxOffice)
-		if err != nil {
-			return err
-		}
-		boxOfficeJSON = jsonData
-	}
-
-	_, err := r.db.Exec(query, movie.Distributor, movie.Budget, movie.MPARating, boxOfficeJSON, movie.Title)
+	_, err := r.db.Exec(query, movie.Distributor, movie.Budget, movie.MPARating, movie.BoxOffice, movie.Title)
 	return err
 }
